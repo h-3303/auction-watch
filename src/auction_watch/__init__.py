@@ -33,7 +33,9 @@ def main(argv=None):
         with sources.HumbleWorth() as hw:
             picks = runner.scan(st, sources.godaddy_rows(), now, hw.estimate, push)
             fresh = runner.gems(st, hw.gems(), push)
-        print(f"scan: {len(picks)} auction picks, {len(fresh)} registrable gems, {len(st['watch'])} watched")
+        hw = sum(1 for p in picks if p.get("estimate_source") == "humbleworth")
+        print(f"scan: {len(picks)} auction picks ({hw} HumbleWorth-valued), {len(fresh)} registrable gems, "
+              f"{len(st['watch'])} watched")
         _save(st, key)
     elif cmd == "show":
         for i in sorted(st["watch"], key=lambda i: i["close"]):

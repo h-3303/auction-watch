@@ -2,6 +2,7 @@
 from . import core, scan as screening
 
 MAX_LOOKUPS = 40  # valuation lookups per scan, best GoDaddy valuations first
+MAX_FAILURES = 3  # consecutive failed lookups before giving up on HumbleWorth for this scan
 GEM_FLOOR = 400  # investor-auction estimate worth an $11 registration
 
 
@@ -36,16 +37,24 @@ def scan(st, rows, now, estimate_of, push):
     candidates = [c for c in (screening.screen(r, now) for r in rows) if c]
     candidates.sort(key=lambda c: -c["valuation"])
     watched = {i["domain"] for i in st["watch"]}
-    picks, lookups = [], 0
+    picks, considered, failures = [], 0, 0
     for c in candidates:
         if c["domain"] in watched:
             continue
-        if lookups >= MAX_LOOKUPS:
+        if considered >= MAX_LOOKUPS:
             break
-        lookups += 1
-        estimate = estimate_of(c["domain"])
-        item = estimate is not None and screening.pick(c, estimate)
+        considered += 1
+        estimate = estimate_of(c["domain"]) if failures < MAX_FAILURES else None
+        source = "humbleworth"
+        if estimate is None:
+            failures += 1
+            # HumbleWorth unreachable: GoDaddy's valuation runs high, so a tenth of it stands in.
+            estimate, source = c["valuation"] / 10, "godaddy"
+        else:
+            failures = 0
+        item = screening.pick(c, estimate)
         if item:
+            item["estimate_source"] = source
             picks.append(item)
     st["watch"] = screening.merge(st["watch"], picks, now)
     if picks:

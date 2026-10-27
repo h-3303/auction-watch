@@ -51,3 +51,15 @@ def test_scan_does_not_repeat_picks_already_watched():
     runner.scan(st, rows, NOW, estimate_of=lambda d: 390, push=lambda *a: None)
     runner.scan(st, rows, NOW, estimate_of=lambda d: 390, push=lambda *a: pushed.append(a))
     assert pushed == [] and len(st["watch"]) == 1
+
+
+def test_scan_falls_back_to_godaddy_valuation_after_three_failed_lookups():
+    rows = [{"Domain Name": f"{n}.COM", "ItemID": str(k), "Price": "$1", "Bids": "0", "Domain Age": "14",
+             "ValuationPrice": "$3,250", "Exact Match TLDs": "16", "Time Left": "10/28/2026 10:47 AM (PDT)"}
+            for k, n in enumerate(["alphaone", "betatwo", "gammathree", "deltafour", "epsilonfive"])]
+    calls = []
+    st = {"watch": []}
+    runner.scan(st, rows, NOW, estimate_of=lambda d: calls.append(d), push=lambda *a: None)
+    assert len(calls) == 3
+    assert len(st["watch"]) == 5 and all(i["max_bid"] == 65 for i in st["watch"])
+    assert all(i["estimate_source"] == "godaddy" for i in st["watch"])

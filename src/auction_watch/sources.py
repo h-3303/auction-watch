@@ -49,10 +49,10 @@ class HumbleWorth:
 
     def estimate(self, domain):
         try:
-            self.page.goto(f"{HW}/valuation/single?domain={domain}", wait_until="domcontentloaded", timeout=30000)
+            self.page.goto(f"{HW}/valuation/single?domain={domain}", wait_until="domcontentloaded", timeout=20000)
             self.page.wait_for_function(
                 "() => /Fast sale \\(auction\\)\\s*\\$[\\d,]+/.test(document.querySelector('main')?.innerText||'')",
-                timeout=20000)
+                timeout=12000)
             text = self.page.inner_text("main")
             m = re.search(r"Fast sale \(auction\)\s*(\$[\d,]+)", text)
             return _dollars(m.group(1)) if m else None
