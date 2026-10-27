@@ -1,0 +1,27 @@
+name: tick
+# Every 5 minutes: alert 30-35 min before each watched auction closes, unless the bid is over the cap.
+on:
+  schedule:
+    - cron: "2-59/5 * * * *"
+  workflow_dispatch:
+concurrency: state
+permissions:
+  contents: write
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --frozen auction-watch tick
+        env:
+          STATE_KEY: ${{ secrets.STATE_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          GODADDY_KEY: ${{ secrets.GODADDY_KEY }}
+          GODADDY_SECRET: ${{ secrets.GODADDY_SECRET }}
+      - name: save state
+        run: |
+          git diff --quiet state.enc && exit 0
+          git config user.name auction-watch && git config user.email actions@users.noreply.github.com
+          git commit -qm "state" state.enc && git pull -q --rebase && git push -q

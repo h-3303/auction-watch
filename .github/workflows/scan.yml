@@ -1,0 +1,27 @@
+name: scan
+# Twice daily: after GoDaddy's inventory file (~14:54 UTC) and after the daily drop list updates.
+on:
+  schedule:
+    - cron: "17 15 * * *"
+    - cron: "37 20 * * *"
+  workflow_dispatch:
+concurrency: state
+permissions:
+  contents: write
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen && uv run playwright install --with-deps chromium
+      - run: uv run auction-watch scan
+        env:
+          STATE_KEY: ${{ secrets.STATE_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      - name: save state
+        run: |
+          git diff --quiet state.enc && exit 0
+          git config user.name auction-watch && git config user.email actions@users.noreply.github.com
+          git commit -qm "state" state.enc && git pull -q --rebase && git push -q
