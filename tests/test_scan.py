@@ -67,3 +67,16 @@ def test_push_request_targets_the_topic_with_title_and_click_url():
     url, headers, data = notify.request("aw-topic", "t", "b", click="https://x")
     assert url == "https://ntfy.sh/aw-topic" and headers["Title"] == "t" and headers["Click"] == "https://x"
     assert data == b"b"
+
+
+def test_screen_requires_one_or_two_common_english_words():
+    for good in ("TOOLADVISOR.COM", "THEVAULTS.COM", "BITSITES.COM", "LIFEFIELD.COM", "HOTELVOICE.COM"):
+        assert scan.screen(row(**{"Domain Name": good}), NOW) is not None, good
+    for junk in ("RNGGC.COM", "ZENOVARX.COM", "JOYUAN.COM", "QSCOT.COM", "SESE.CO"):
+        assert scan.screen(row(**{"Domain Name": junk}), NOW) is None, junk
+
+
+def test_screen_rejects_net_org_and_adult_or_gambling_themes():
+    assert scan.screen(row(**{"Domain Name": "YOURMORTGAGE.NET"}), NOW) is None
+    assert scan.screen(row(**{"Domain Name": "ZOOPHILIST.COM"}), NOW) is None
+    assert scan.screen(row(**{"Domain Name": "CASINOWIN.COM"}), NOW) is None

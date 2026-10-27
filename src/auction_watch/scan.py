@@ -4,13 +4,28 @@ from datetime import datetime, timedelta
 
 from . import core
 
-TLDS = {"com", "co", "net", "org"}
+TLDS = {"com", "co"}
 HORIZON = timedelta(hours=36)
 MIN_LEAD = timedelta(hours=1)
 # Labels that read as someone else's brand; owning these invites a dispute, not a sale.
 BRANDS = ("deepl", "netflix", "google", "amazon", "apple", "facebook", "instagram", "tiktok", "openai",
           "chatgpt", "paypal", "microsoft", "youtube", "disney", "nike", "adidas", "tesla", "ticktick",
           "leatherman", "ebay", "walmart", "spotify", "samsung", "nvidia", "anthropic", "claude")
+# Themes no end user pays a premium for in the open market (and that are unpleasant to hold).
+BANNED = ("sex", "porn", "xxx", "zoo", "casino", "slot", "bet", "poker", "capsa", "nude", "escort", "drug")
+MIN_ZIPF = 3.0  # wordfreq frequency: ~1 use per million words or more
+
+
+def _common(word):
+    from wordfreq import zipf_frequency
+    return len(word) >= 2 and zipf_frequency(word, "en") >= MIN_ZIPF
+
+
+def is_words(label):
+    """True when the label is one common English word or two of them run together."""
+    if _common(label):
+        return True
+    return any(_common(label[:i]) and _common(label[i:]) for i in range(3, len(label) - 2))
 
 
 def _money(text):
@@ -22,7 +37,7 @@ def screen(row, now):
     label, _, tld = name.partition(".")
     if tld not in TLDS or not re.fullmatch(r"[a-z]{3,12}", label):
         return None
-    if any(b in label for b in BRANDS):
+    if any(b in label for b in BRANDS + BANNED) or not is_words(label):
         return None
     if int(row["Domain Age"] or 0) < 8 or _money(row["ValuationPrice"]) < 2000:
         return None
